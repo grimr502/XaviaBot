@@ -1,0 +1,83 @@
+import { Configuration, OpenAIApi } from "openai";
+
+const config = {
+  name: "orph",
+  aliases: ["orphues"],
+  description: "Interact with AI",
+  usage: "[text]",
+  cooldown: 3,
+  permissions: [0, 1, 2],
+  credits: "XaviaTeam",
+  extra: {
+      apiKey: "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",
+      organization: "org-i420aJyNw3TD7aELnxji9sMI"
+  }
+};
+
+const langData = {
+  "en_US": {
+    "missingInput": "Missing input.",
+    "noAnswer": "No data...",
+    "error": "Error, try again later...",
+  }
+};
+
+let memory = {};
+
+async function onLoad({ extra }) {
+  if (!global.openai) {
+    const configuration = new Configuration({
+      organization: extra.organization,
+      apiKey: extra.openaiKey,
+    });
+
+    global.openai = new OpenAIApi(configuration);
+  }
+}
+
+async function onCall({ message, args, getLang }) {
+  const ask = args.join(" ");
+  if (!ask) return message.reply(getLang("missingInput"));
+
+  try {
+    await message.react("⏳");
+    let _data;
+    if (memory[ask]) {
+      _data = memory[ask];
+    } else {
+      _data = await askAI(ask);
+      if (_data.length === 0) {
+        return message.react("❌").then(message.reply(getLang("error")));
+      }
+      memory[ask] = _data;
+    }
+    await message.react("✅");
+    message.reply(_data);
+  } catch (e) {
+    console.error(e?.response?.data || e.message || e);
+    message.react("❌").then(message.reply(getLang("error")));
+  }
+  return;
+}
+
+async function askAI(ask) {
+  const response = await global.openai.createCompletion({
+    model: "text-davinci-003",
+    prompt: ask,
+    temperature: 0.9,
+    n: 1,
+    stream: false,
+    // stop: ["\n", " Human:", " AI:"],
+    max_tokens: 4000
+  });
+
+  return response.data.choices[0].text;
+}
+
+export default {
+  config,
+  onLoad,
+  langData,
+  onCall
+}
+

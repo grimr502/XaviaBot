@@ -86,8 +86,8 @@ async function makeCard(data) {
 
 const langData = {
     "en_US": {
-        "rank_all_local": "--- Leaderboard ---\n👤 Your exp: {senderExp} #{senderRank}\n📕 Members:\n{allData}",
-        "rank_all_global": "--- Leaderboard ---\n👤 Your exp: {senderExp} #{senderRank}\n📕 Global Top 20:\n{allData}",
+        "rank_all_local": "❯❱【𝐋𝐄𝐀𝐃𝐄𝐑𝐁𝐎𝐀𝐑𝐃】❰❮\n👤 Your exp: {senderExp} #{senderRank}\n📕 Members:\n{allData}",
+        "rank_all_global": "❯❱【𝐋𝐄𝐀𝐃𝐄𝐑𝐁𝐎𝐀𝐑𝐃】❰❮\n👤 Your exp: {senderExp} #{senderRank}\n📕 Global Top 20:\n{allData}",
     },
     "vi_VN": {
         "rank_all_local": "-- Xếp hạng tương tác --\n👤 Exp của bạn: {senderExp} #{senderRank}\n📕 Thành viên:\n{allData}",

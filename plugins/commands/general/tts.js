@@ -30,11 +30,11 @@ function onCall({ message, args, getLang }) {
             lang = args[0];
             text = [...args].slice(1).join(' ');
             if (!supportedLangs.includes(lang)) {
-                lang = "vi";
+                lang = "fil";
                 text = args.join(' ');
             }
         } else {
-            lang = "vi";
+            lang = "fil";
             text = args[0];
         }
 

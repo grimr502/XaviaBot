@@ -1,0 +1,48 @@
+const config = {
+  name: "banklb",
+  aliases: ["bankleaderboard", "baltop"],
+  description: "Shows the top users with the highest balance in the bank.",
+  usage: "",
+  cooldown: 5,
+  credits: "XaviaTeam",
+};
+
+async function onCall({ message }) {
+  const { join } = await import('path');
+  const { existsSync, readFileSync } = await import('fs');
+
+  const PATH = join(global.assetsPath, 'bank.json');
+
+  if (!existsSync(PATH)) {
+    return message.reply("Bank data not found.");
+  }
+
+  const dataJson = JSON.parse(readFileSync(PATH, 'utf-8'));
+
+  const top = 10; // Number of top users to display
+
+  const topBalances = dataJson
+    .filter((user) => user.money !== undefined)
+    .sort((a, b) => b.money - a.money)
+    .slice(0, top);
+
+  let messageToSend = "";
+  topBalances.forEach((user, index) => {
+    // Assuming the name property exists in the dataJson object
+    messageToSend += `${index + 1}. ${user.name} | Balance: $${user.money.toLocaleString('en-US')}\n`;
+  });
+
+  const resultMessage = `💰『𝐓𝐎𝐏 ${top} 𝐁𝐀𝐍𝐊 𝐔𝐒𝐄𝐑𝐒 𝗪𝐈𝐓𝐇 𝐇𝐈𝐆𝐇𝐄𝐒𝐓 𝐁𝐀𝐋𝐀𝐍𝐂𝐄』💰\n`;
+  const response = `${resultMessage}\n${messageToSend}`;
+
+  try {
+    await message.reply(response);
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+export default {
+  config,
+  onCall,
+};

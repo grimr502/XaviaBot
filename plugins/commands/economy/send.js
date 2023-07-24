@@ -13,12 +13,12 @@ const config = {
 
 const langData = {
     "en_US": {
-        "missingMention": "You need to mention someone to send money to them",
-        "invalidAmount": "Invalid amount",
-        "lowerThanMin": "Minimum amount is {minAmount} XC",
-        "notEnoughMoney": "You don't have enough money, you need {amount} XC more",
-        "sendSuccessFee": "You have sent {amount} XC to {name} (fee: {fee} XC)",
-        "error": "An error occurred, please try again later"
+        "missingMention": "𝚈𝚘𝚞 𝚗𝚎𝚎𝚍 𝚝𝚘 𝚖𝚎𝚗𝚝𝚒𝚘𝚗 𝚜𝚘𝚖𝚎𝚘𝚗𝚎 𝚝𝚘 𝚜𝚎𝚗𝚍 𝚖𝚘𝚗𝚎𝚢 𝚝𝚘 𝚝𝚑𝚎𝚖.",
+        "invalidAmount": "𝙸𝚗𝚟𝚊𝚕𝚒𝚍 𝚊𝚖𝚘𝚞𝚗𝚝.",
+        "lowerThanMin": "𝙼𝚒𝚗𝚒𝚖𝚞𝚖 𝚊𝚖𝚘𝚞𝚗𝚝 𝚒𝚜 ${minAmount}.",
+        "notEnoughMoney": "𝚈𝚘𝚞 𝚍𝚘𝚗'𝚝 𝚑𝚊𝚟𝚎 𝚎𝚗𝚘𝚞𝚐𝚑 𝚖𝚘𝚗𝚎𝚢, 𝚢𝚘𝚞 𝚗𝚎𝚎𝚍 ${amount} 𝚖𝚘𝚛𝚎.",
+        "sendSuccessFee": "𝚈𝚘𝚞 𝚑𝚊𝚟𝚎 𝚜𝚎𝚗𝚝 ${amount} 𝚝𝚘 {name}. (𝚏𝚎𝚎: ${fee} 💵).",
+        "error": "𝙰𝚗 𝚎𝚛𝚛𝚘𝚛 𝚘𝚌𝚌𝚞𝚛𝚛𝚎𝚍, 𝚙𝚕𝚎𝚊𝚜𝚎 𝚝𝚛𝚢 𝚊𝚐𝚊𝚒𝚗 𝚕𝚊𝚝𝚎𝚛."
     },
     "vi_VN": {
         "missingMention": "Bạn cần phải tag người dùng để gửi tiền cho họ",

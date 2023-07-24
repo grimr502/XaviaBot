@@ -1,0 +1,75 @@
+import crypto from "crypto";
+
+const config = {
+  name: "roll",
+  aliases: ["dice"],
+  description: "Roll a dice",
+  usage: "<bet amount>",
+  cooldown: 20,
+  credits: "TakiUwU"
+};
+
+const langData = {
+  "en_US": {
+    "roll.invalidAmount": "𝙸𝚗𝚟𝚊𝚕𝚒𝚍 𝚋𝚎𝚝 𝚊𝚖𝚘𝚞𝚗𝚝.",
+    "roll.insufficientBalance": "𝚈𝚘𝚞 𝚍𝚘𝚗'𝚝 𝚑𝚊𝚟𝚎 𝚎𝚗𝚘𝚞𝚐𝚑 𝚖𝚘𝚗𝚎𝚢 𝚝𝚘 𝚙𝚕𝚊𝚌𝚎 𝚝𝚑𝚊𝚝 𝚋𝚎𝚝.",
+    "roll.result": "〔𝚈𝚘𝚞 𝚛𝚘𝚕𝚕𝚎𝚍 𝚊 ⌜{result}⌟〕!\n        {message}"
+  },
+  "vi_VN": {
+    "roll.invalidAmount": "Số tiền đặt cược không hợp lệ.",
+    "roll.insufficientBalance": "Bạn không đủ tiền để đặt cược.",
+    "roll.result": "Bạn đã tung được {result}! {message}"
+  }
+};
+
+async function onCall({ message, args, getLang }) {
+  const { Users } = global.controllers;
+  const amount = parseInt(args[0]);
+
+  if (isNaN(amount) || amount <= 0) {
+    return message.reply(getLang("roll.invalidAmount"));
+  }
+
+  try {
+    const userBalance = await Users.getMoney(message.senderID);
+
+    if (userBalance == null || userBalance < amount) {
+      return message.reply(getLang("roll.insufficientBalance"));
+    }
+
+    // Generate a cryptographically secure random number between 1 and 6 (inclusive)
+    const buffer = crypto.randomBytes(1);
+    const rollResult = buffer[0] % 6 + 1;
+
+    const isWin = rollResult === 1;
+    let winnings;
+    let resultMessage;
+
+    if (isWin) {
+      winnings = -amount;
+      resultMessage = getLang("roll.result", {
+        result: rollResult,
+        message: `𝚈𝚘𝚞 𝚕𝚘𝚜𝚝 $${amount}. 💸`
+      });
+    } else {
+      winnings = amount * 1;
+      resultMessage = getLang("roll.result", {
+        result: rollResult,
+        message: `𝚈𝚘𝚞 𝚠𝚘𝚗 $${winnings}! 💵`
+      });
+    }
+
+    await Users.increaseMoney(message.senderID, winnings);
+
+    message.reply(resultMessage);
+  } catch (error) {
+    console.error(error);
+    return message.reply(getLang("any.error"));
+  }
+}
+
+export default {
+  config,
+  langData,
+  onCall
+};

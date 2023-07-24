@@ -9,9 +9,9 @@ const config = {
 
 const langData = {
     "en_US": {
-        "balance.userNoData": "User not found/not ready",
-        "balance.selfNoData": "Your data is not ready",
-        "balance.result": "Balance: {money}XC"
+        "balance.userNoData": "𝚄𝚜𝚎𝚛 𝚗𝚘𝚝 𝚏𝚘𝚞𝚗𝚍/𝚗𝚘𝚝 𝚛𝚎𝚊𝚍𝚢.",
+        "balance.selfNoData": "𝚈𝚘𝚞𝚛 𝚍𝚊𝚝𝚊 𝚒𝚜 𝚗𝚘𝚝 𝚛𝚎𝚊𝚍𝚢.",
+        "balance.result": "𝙱𝚊𝚕𝚊𝚗𝚌𝚎: ${money}. 💰"
     },
     "vi_VN": {
         "balance.userNoData": "Người dùng không tìm thấy/chưa sẵn sàng",
@@ -39,7 +39,7 @@ async function onCall({ message, getLang }) {
 
         for (const TSenderID in mentions) {
             userBalance = await Users.getMoney(TSenderID);
-            msg += `${mentions[TSenderID].replace(/@/g, '')}: ${global.addCommas(userBalance || 0)}XC\n`;
+            msg += `${mentions[TSenderID].replace(/@/g, '')}: $${global.addCommas(userBalance || 0)}.\n`;
         }
 
         return message.reply(msg);

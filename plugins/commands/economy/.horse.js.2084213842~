@@ -1,0 +1,237 @@
+// Import the required modules
+import axios from 'axios';
+
+// Configuration for the horse racing game
+const config = {
+  name: "horse-racing",
+  aliases: ["hr"],
+  description: "Play horse racing with multiplayer.",
+  usage: "Use it then you'll know.",
+  cooldown: 3,
+  permissions: [0, 1, 2],
+  isAbsolute: false,
+  isHidden: false,
+  credits: "Sies",
+};
+
+// Access the global API object
+const { api } = global;
+
+// Define the horseImages array outside the onCall function
+const horseImages = [
+  // URLs of horse images
+  // Add or modify horse images as needed
+  { number: 1, url: "https://i.imgur.com/I7ZElJ0.png" },
+  { number: 2, url: "https://i.imgur.com/cRBu7li.png" },
+  { number: 3, url: "https://i.imgur.com/SOaK0P6.png" },
+  { number: 4, url: "https://i.imgur.com/NjiaX1B.png" },
+  { number: 5, url: "https://i.imgur.com/ZY4m1zd.png" },
+  { number: 6, url: "https://i.imgur.com/5F6VC3q.png" },
+  { number: 7, url: "https://i.imgur.com/Ff5w1Me.png" },
+  { number: 8, url: "https://i.imgur.com/DhEzQp9.png" },
+  { number: 9, url: "https://i.imgur.com/F29yd5M.png" },
+];
+
+// Main function to handle commands
+async function onCall({ message, args }) {
+  const { Users } = global.controllers;
+  global.chanle || (global.chanle = new Map);
+  var bcl = global.chanle.get(message.threadID);
+  const horseImg = (await axios.get("https://i.imgur.com/lDiULBt.jpg", {
+    responseType: "stream"
+  })).data;
+  const { senderID, threadID, messageID, body } = message;
+
+  if (args[0] === "create" || args[0] === "new" || args[0] === "-c") {
+    // Create a new horse racing game
+    if (!args[1] || isNaN(args[1])) {
+      return api.sendMessage("[SIES-WARN ⚠] » You need to enter a reservation amount!", threadID, messageID);
+    }
+    const reservationAmount = parseInt(args[1]);
+    if (reservationAmount < 500) {
+      return api.sendMessage("[SIES-WARN ⚠] » Amount must be greater than or equal to 500!", threadID, messageID);
+    }
+    const userMoney = await Users.getMoney(senderID) || null;
+    if (userMoney < reservationAmount) {
+      return api.sendMessage(`[SIES-WARN ⚠] » You don't have enough ${reservationAmount}$ to create a new game!`, threadID, messageID);
+    }
+    if (global.chanle.has(threadID)) {
+      return api.sendMessage("[SIES-WARN ⚠] » This group has already opened a game table!", threadID, messageID);
+    }
+
+    const playerName = (await global.controllers.Users.getInfo(senderID))?.name || senderID;
+    global.chanle.set(threadID, {
+      box: threadID,
+      start: false,
+      author: senderID,
+      players: [{
+        name: playerName,
+        userID: senderID,
+        horse: null,
+      }],
+      reservationAmount: reservationAmount,
+    });
+    return api.sendMessage(`[SIES-NOTI] » Successfully created a horse racing game with a reservation amount of ${reservationAmount}$.`, threadID);
+
+  } else if (args[0] === "join" || args[0] === "-j") {
+    // Join the horse racing game
+    if (!global.chanle.has(threadID)) {
+      return api.sendMessage("[SIES-WARN ⚠] » There is currently no horse racing game in this group!\n=> Please create a new game to join!", threadID, messageID);
+    }
+    bcl = global.chanle.get(threadID);
+    if (bcl.start) {
+      return api.sendMessage("[SIES-WARN ⚠] » This horse racing game has already started!", threadID, messageID);
+    }
+    const reservationAmount = bcl.reservationAmount;
+    const playerMoney = await Users.getMoney(senderID) || null;
+    if (playerMoney < reservationAmount) {
+      return api.sendMessage(`[SIES-WARN ⚠] » You don't have enough ${reservationAmount}$ to join this horse racing game!`, threadID, messageID);
+    }
+    const playerName = (await global.controllers.Users.getInfo(senderID))?.name || senderID;
+    if (bcl.players.find((player) => player.userID === senderID)) {
+      return api.sendMessage("You have already joined this horse racing game!", threadID, messageID);
+    }
+    bcl.players.push({
+      name: playerName,
+      userID: senderID,
+      horse: null,
+    });
+    global.chanle.set(threadID, bcl);
+    return api.sendMessage(`[SIES-NOTI] » You have joined the horse racing game!\n=> The current number of players is: ${bcl.players.length}`, threadID, messageID);
+
+  } else if (args[0] === "start" || args[0] === "-s") {
+    // Start the horse racing game
+    bcl = global.chanle.get(threadID);
+    if (!bcl) {
+      return api.sendMessage("[SIES-WARN ⚠] » There is currently no horse racing game in this group!\n=> Please create a new game to join!", threadID, messageID);
+    }
+    if (bcl.author !== senderID) {
+      return api.sendMessage("[SIES-WARN ⚠] » You are not the creator of this horse racing game, so you cannot start the game.", threadID, messageID);
+    }
+    if (bcl.players.length < 2) {
+      return api.sendMessage("[SIES-WARN ⚠] » Your horse racing game doesn't have enough players to start!", threadID, messageID);
+    }
+    if (bcl.start) {
+      return api.sendMessage("[SIES-WARN ⚠] » This horse racing game has already started!", threadID, messageID);
+    }
+
+    bcl.start = true;
+    // Set the number of horses based on the number of players
+    const numberOfPlayers = bcl.players.length;
+    bcl.horses = Array.from({ length: numberOfPlayers }, (_, index) => index + 1);
+    // Shuffle the horses randomly
+    bcl.horses.sort(() => Math.random() - 0.5);
+    global.chanle.set(threadID, bcl);
+
+    // Start the race with the new number of horses
+    startRacingGame(threadID, bcl);
+
+  } else if (!isNaN(args[0])) {
+    // Player picks a horse number
+    bcl = global.chanle.get(threadID);
+    if (!bcl) {
+      return api.sendMessage("[SIES-WARN ⚠] » There is currently no horse racing game in this group!\n=> Please create a new game to join!", threadID, messageID);
+    }
+    if (!bcl.start) {
+      return api.sendMessage("[SIES-WARN ⚠] » The horse racing game has not started yet!", threadID, messageID);
+    }
+    const player = bcl.players.find((p) => p.userID === senderID);
+    if (!player) {
+      return api.sendMessage("[SIES-WARN ⚠] » You haven't joined this horse racing game!", threadID, messageID);
+    }
+    if (player.horse !== null) {
+      return api.sendMessage(`[SIES-WARN ⚠] » ${player.name}, you have already picked horse number ${player.horse}!`, threadID, messageID);
+    }
+    const horseNumber = parseInt(args[0]);
+    if (isNaN(horseNumber) || horseNumber < 1 || horseNumber > bcl.horses.length) {
+      return api.sendMessage("[SIES-WARN ⚠] » Please choose a valid horse number.", threadID, messageID);
+    }
+    if (bcl.players.some((p) => p.horse === horseNumber)) {
+      return api.sendMessage("[SIES-WARN ⚠] » Another player has already picked this horse number! Please choose another one.", threadID, messageID);
+    }
+    player.horse = horseNumber;
+    global.chanle.set(threadID, bcl);
+    return api.sendMessage(`[SIES-NOTI] » ${player.name} picked horse number ${horseNumber}.`, threadID, messageID);
+  } else if (args[0] === "end" || args[0] === "-e") {
+    // End the horse racing game and determine the winner
+    bcl = global.chanle.get(threadID);
+    if (!bcl) {
+      return api.sendMessage("[SIES-WARN ⚠] » There is currently no horse racing game in this group!\n=> Please create a new game to join!", threadID, messageID);
+    }
+    if (bcl.author !== senderID) {
+      return api.sendMessage("[SIES-WARN ⚠] » You are not the creator of this horse racing game, so you cannot end the game.", threadID, messageID);
+    }
+    if (!bcl.start) {
+      return api.sendMessage("[SIES-WARN ⚠] » The horse racing game has not started yet!", threadID, messageID);
+    }
+    const numberOfPlayers = bcl.players.length;
+    let winner = null;
+    const winningHorseNumber = Math.floor(Math.random() * bcl.horses.length) + 1; // Generate a random horse number between 1 and number of horses
+    for (let i = 0; i < numberOfPlayers; i++) {
+      const player = bcl.players[i];
+      if (player.horse === winningHorseNumber) {
+        winner = player;
+        break;
+      }
+    }
+    if (winner) {
+      const winningHorseImage = horseImages.find((horse) => horse.number === winningHorseNumber).url;
+      const raceResult = `[SIES-NOTI] » The horse racing game has ended!\n\nThe winning horse is number ${winningHorseNumber}!\n\nThe winner is ${winner.name}!\n\nCongratulations! 🎉🏆`;
+      const raceResultImage = (await axios.get(winningHorseImage, {
+        responseType: "stream",
+      })).data;
+      api.sendMessage({
+        body: raceResult,
+        attachment: raceResultImage,
+      }, threadID);
+    } else {
+      api.sendMessage("[SIES-NOTI] » The horse racing game has ended!\n\nUnfortunately, there is no winner this time. Better luck next time!", threadID);
+    }
+
+    // Reset the game state
+    global.chanle.delete(threadID);
+  } else {
+    // Display help information if the command is not recognized
+    return api.sendMessage({
+      body: "==【Multiplayer Horse Racing Game】==\n1. !hr -c/create <price> => Create a new horse racing game.\n2. !hr -j/join => Join to enter the game.\n3. !hr -s/start => Start the game.\n4. !hr <horse_number> => Pick a horse number (1 to 9).\n5. !hr -e/end => End the game and determine the winner.",
+      attachment: horseImg,
+    }, threadID, messageID);
+  }
+}
+
+// Function to start the horse racing game
+async function startRacingGame(threadID, bcl) {
+  const horseRaceGif = (await axios.get("https://i.imgur.com/zIKiq8B.gif", {
+    responseType: "stream",
+  })).data;
+  api.sendMessage({
+    body: "[SIES-NOTI] » The horse racing game has started!\n\nPlease pick a horse number from 1 to 9 by typing the command `!hr <horse_number>`.",
+    attachment: horseRaceGif,
+  }, threadID);
+
+  // Unsend the racing animation and message after 8 seconds
+  setTimeout(async () => {
+    try {
+      const messages = await api.getThreadMessages(threadID);
+      const racingMessage = messages.find((msg) => msg.body === "[SIES-NOTI] » The horse racing game has started!\n\nPlease pick a horse number from 1 to 9 by typing the command `!hr <horse_number>`.");
+      if (racingMessage) {
+        await api.unsendMessage(racingMessage.messageID);
+      }
+    } catch (error) {
+      console.error("Error occurred while unsending the racing message:", error.message);
+    }
+  }, 8000); // 8 seconds
+
+  // Assign shuffled horse numbers to players
+  const numberOfPlayers = bcl.players.length;
+  for (let i = 0; i < numberOfPlayers; i++) {
+    bcl.players[i].horse = bcl.horses[i];
+  }
+  global.chanle.set(threadID, bcl);
+}
+
+// Export the configuration and the main function
+export default {
+  config,
+  onCall,
+};

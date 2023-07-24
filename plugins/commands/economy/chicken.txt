@@ -1,0 +1,217 @@
+import fs from 'fs';
+import axios from 'axios';
+import { join } from 'path';
+
+const config = {
+  name: "chicken",
+  aliases: ["chick"],
+  description: "Buy and fight chickens",
+  usage: "<buy/bet/menu/challenge>",
+  cooldown: 6,
+  credits: "Dymyrius"
+};
+
+const langData = {
+  "en_US": {
+    "chicken.buySuccess": "You have successfully bought a chicken! 🐓",
+    "chicken.buyFailure": "You already have a chicken. 🐓",
+    "chicken.noChicken": "You don't have a chicken. Use `chicken buy` to get one.",
+    "chicken.betAmountInvalid": "Invalid bet amount. Please provide a valid number.",
+    "chicken.betInsufficientBalance": "You don't have enough balance to place that bet.",
+    "chicken.betResultWin": "Congratulations! Your chicken won the fight.\nYou won ${amount}. 💵",
+    "chicken.betResultLoss": "Your chicken lost the fight and died. 🪦\nYou lost ${amount}. 💸",
+    "chicken.menuOptions": "◦❭❯❱【Chicken Game】❰❮❬◦\n\n1. `chicken buy` » Buy a chicken.\n2. `chicken bet <amount>` » Bet on your chicken in a fight.\n3. `chicken challenge @user <amount>` » Challenge another user to a chicken fight."
+  },
+  // Add translations for other languages if needed
+};
+
+let chickenOwners = new Set();
+const PATH = join(global.assetsPath, 'chicken_owners.json'); // Specify the path to the chicken_owners.json file
+
+// Load chicken owners from a file
+function loadChickenOwners() {
+  try {
+    const data = fs.readFileSync(PATH, 'utf8');
+    chickenOwners = new Set(JSON.parse(data));
+  } catch (err) {
+    console.error('Failed to load chicken owners:', err);
+  }
+}
+
+// Save chicken owners to a file
+function saveChickenOwners() {
+  try {
+    const data = JSON.stringify([...chickenOwners]);
+    fs.writeFileSync(PATH, data, 'utf8');
+  } catch (err) {
+    console.error('Failed to save chicken owners:', err);
+  }
+}
+
+loadChickenOwners();
+
+async function onCall({ message, getLang, args }) {
+  const { Users } = global.controllers;
+
+  if (!message || !message.body) {
+    // Handle the case where the message object or message body is undefined
+    console.error('Invalid message object!');
+    return;
+  }
+
+  const { senderID, mentions } = message;
+  const opponentID = Object.keys(mentions)[0];
+
+  if (args.length === 0 || args[0] === "menu") {
+    const menuOptions = getLang("chicken.menuOptions");
+    return message.reply(menuOptions);
+  }
+
+  if (args[0] === "buy") {
+    if (chickenOwners.has(senderID)) {
+      return message.reply(getLang("chicken.buyFailure"));
+    }
+
+    const chickenPrice = 5000; // Assuming the chicken costs 5000 credits
+    const userBalance = await Users.getMoney(senderID);
+
+    if (userBalance < chickenPrice) {
+      return message.reply("You don't have enough balance to buy a chicken.");
+    }
+
+    await Users.decreaseMoney(senderID, chickenPrice);
+    chickenOwners.add(senderID);
+    saveChickenOwners(); // Save updated chicken owners to the file
+    return message.reply(getLang("chicken.buySuccess"));
+  }
+
+  if (args[0] === "bet") {
+    if (!chickenOwners.has(senderID)) {
+      return message.reply(getLang("chicken.noChicken"));
+    }
+
+    const betAmount = parseFloat(args.slice(1).join(" "));
+
+    if (isNaN(betAmount)) {
+      return message.reply(getLang("chicken.betAmountInvalid"));
+    }
+
+    const userBalance = await Users.getMoney(senderID);
+
+    if (betAmount > userBalance) {
+      return message.reply(getLang("chicken.betInsufficientBalance"));
+    }
+
+    const isWin = Math.random() < 0.4; // Assuming a 40% chance of winning
+    const betResult = isWin ? "win" : "loss";
+    const betResultMessage = isWin ? getLang("chicken.betResultWin") : getLang("chicken.betResultLoss");
+    const winAmount = Math.floor(betAmount); // Assuming the same amount as the bet as winnings
+
+    if (isWin) {
+      await Users.increaseMoney(senderID, winAmount);
+    } else {
+      await Users.decreaseMoney(senderID, betAmount); // Deduct the bet amount on loss
+      // Remove chicken ownership if the user loses the game
+      chickenOwners.delete(senderID);
+      saveChickenOwners(); // Save updated chicken owners to the file
+    }
+
+    const roll = (await axios.get("https://i.imgur.com/1KRv1CS.gif", {
+      responseType: "stream"
+    })).data;
+
+    const checkingMessage = await message.reply(
+      {
+        body: "Checking results...",
+        attachment: roll
+      }
+    );
+
+    await delay(5000); // Additional delay for suspense (optional)
+
+    await message.reply(betResultMessage.replace("{amount}", winAmount));
+
+    if (global.api && global.api.unsendMessage) {
+      await global.api.unsendMessage(checkingMessage.messageID);
+    }
+
+    return; // Prevent displaying the menu after the results
+  }
+
+  if (args[0] === "challenge") {
+    const opponentChickenOwner = chickenOwners.has(opponentID);
+
+    if (!opponentChickenOwner) {
+      return message.reply("You cannot challenge a user who doesn't have a chicken.");
+    }
+
+    const betAmount = parseInt(args[args.length - 1]);
+    if (isNaN(betAmount)) {
+      return message.reply(getLang("chicken.betAmountInvalid"));
+    }
+
+    const userBalance = await Users.getMoney(senderID);
+    const opponentBalance = await Users.getMoney(opponentID);
+
+    if (betAmount > userBalance) {
+      return message.reply(getLang("chicken.betInsufficientBalance"));
+    }
+
+    if (betAmount > opponentBalance) {
+      return message.reply("The user you challenged doesn't have enough balance to accept your bet.");
+    }
+
+    const isWin = Math.random() < 0.4; // Assuming a 40% chance of winning for challenge
+    const challengeResult = isWin ? "win" : "loss";
+    const challengeResultMessage = isWin ? getLang("chicken.betResultWin") : getLang("chicken.betResultLoss");
+    const winAmount = Math.floor(betAmount * 1); // Assuming double the bet amount as winnings
+
+    if (isWin) {
+      await Users.increaseMoney(senderID, winAmount);
+      await Users.decreaseMoney(opponentID, betAmount);
+      chickenOwners.delete(opponentID);
+      saveChickenOwners();
+    } else {
+      await Users.decreaseMoney(senderID, betAmount);
+      await Users.increaseMoney(opponentID, winAmount);
+      chickenOwners.delete(senderID);
+      saveChickenOwners();
+    }
+
+    const roll = (await axios.get("https://i.imgur.com/1KRv1CS.gif", {
+      responseType: "stream"
+    })).data;
+
+    const checkingMessage = await message.reply(
+      {
+        body: "Checking results...",
+        attachment: roll
+      }
+    );
+
+    await delay(5000); // Additional delay for suspense (optional)
+
+    await message.reply(challengeResultMessage.replace("{amount}", winAmount));
+
+    if (global.api && global.api.unsendMessage) {
+      await global.api.unsendMessage(checkingMessage.messageID);
+    }
+
+    return; // Prevent displaying the menu after the challenge
+  }
+
+  // If the command is not recognized, show the menu
+  const menuOptions = getLang("chicken.menuOptions");
+  return message.reply(menuOptions);
+}
+
+// Utility function to introduce a delay
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+export default {
+  config,
+  langData,
+  onCall
+};

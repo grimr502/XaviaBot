@@ -1,0 +1,63 @@
+import axios from "axios";
+import fs from "fs-extra";
+import path from "path";
+
+const config = {
+    name: "pinterest",
+    version: "1.0.0",
+    description: "Image search",
+    usage: "[Text] - [number]",
+    cooldown: 0,
+    permissions: [0],
+    credits: "senthanh",
+};
+
+async function onCall({ event, args }) {
+    try {
+        const keySearch = args.join(" ");
+        if (!keySearch.includes("-"))
+            return;
+
+        const keySearchs = keySearch.substr(0, keySearch.indexOf("-"));
+        const numberSearch = keySearch.split("-").pop() || 6;
+
+        const res = await axios.get(
+            `https://bot.api-johnlester.repl.co/pinterest?search=${encodeURIComponent(
+                keySearchs
+            )}`
+        );
+        const data = res.data.data;
+        let num = 0;
+        const imgData = [];
+
+        const modulePath = new URL(import.meta.url).pathname;
+        const moduleDir = path.dirname(modulePath);
+
+        for (let i = 0; i < parseInt(numberSearch); i++) {
+            const filePath = path.join(moduleDir, `data/${(num += 1)}.jpg`);
+            const getDown = (
+                await axios.get(`${data[i]}`, { responseType: "arraybuffer" })
+            ).data;
+            fs.writeFileSync(filePath, Buffer.from(getDown, "utf-8"));
+            imgData.push(fs.createReadStream(filePath));
+        }
+
+        // Replace the following code with your message sending code
+        console.log(`${numberSearch} Search results for keyword: ${keySearchs}`);
+        console.log(imgData);
+
+        for (let ii = 1; ii < parseInt(numberSearch); ii++) {
+            const filePath = path.join(moduleDir, `data/${ii}.jpg`);
+            fs.unlinkSync(filePath);
+        }
+    } catch (error) {
+        console.error(error);
+        // Replace the following code with your error message sending code
+        console.log("Error, please try again later or contact the developer.");
+    }
+}
+
+export default {
+    config,
+    onCall,
+};

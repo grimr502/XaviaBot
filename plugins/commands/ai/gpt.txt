@@ -1,0 +1,124 @@
+import axios from 'axios';
+import { Configuration, OpenAIApi } from 'openai';
+
+const config = {
+  name: "gpt",
+  aliases: ["gpt-chat"],
+  description: {
+    en: "GPT chat",
+    vi: "GPT chat"
+  },
+  usage: {
+    en: "[content]",
+    vi: "[nội dung]"
+  },
+  cooldown: 5,
+  permissions: [0],
+  credits: "NTKhang",
+  extra: {
+    openaiKey: "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",
+    maxTokens: 500,
+    numberGenerateImage: 4,
+    maxStorageMessage: 4
+  }
+};
+
+const langData = {
+  vi: {
+    apiKeyEmpty: "Vui lòng cung cấp api key cho openai",
+    invalidContentDraw: "Vui lòng nhập nội dung bạn muốn vẽ",
+    yourAreUsing: "Bạn đang sử dụng gpt chat, vui lòng chờ quay lại sau khi yêu cầu trước kết thúc",
+    processingRequest: "Đang xử lý yêu cầu của bạn, quá trình này có thể mất vài phút, vui lòng chờ",
+    invalidContent: "Vui lòng nhập nội dung bạn muốn chat",
+    error: "Đã có lỗi xảy ra\n%1",
+    clearHistory: "Đã xóa lịch sử chat của bạn với gpt"
+  },
+  en: {
+    apiKeyEmpty: "Please provide api key for openai",
+    invalidContentDraw: "Please enter the content you want to draw",
+    yourAreUsing: "You are using gpt chat, please wait until the previous request ends",
+    processingRequest: "Processing your request, this process may take a few minutes, please wait",
+    invalidContent: "Please enter the content you want to chat",
+    error: "An error has occurred\n%1",
+    clearHistory: "Your chat history with gpt has been deleted"
+  }
+};
+
+let openAIUsing = {};
+let openAIHistory = {};
+
+async function onCall({ message, event, args, getLang }) {
+  const apiKey = config.extra.openaiKey;
+  const lang = getLang();
+
+  if (!apiKey) {
+    return message.reply(langData[lang].apiKeyEmpty);
+  }
+
+  switch (args[0]) {
+    case 'img':
+    case 'image':
+    case 'draw': {
+      // Code for image generation command omitted for brevity
+      break;
+    }
+    case 'clear': {
+      openAIHistory[event.senderID] = [];
+      message.reply(langData[lang].clearHistory);
+      break;
+    }
+    default: {
+      if (!args[0]) {
+        return message.reply(langData[lang].invalidContent);
+      }
+      if (openAIUsing[event.senderID]) {
+        return message.reply(langData[lang].yourAreUsing);
+      }
+
+      openAIUsing[event.senderID] = true;
+
+      let sending;
+      try {
+        sending = message.reply(langData[lang].processingRequest);
+        const response = await axios.post(
+          "https://api.openai.com/v1/engines/davinci-codex/completions",
+          {
+            prompt: args.join(' '),
+            max_tokens: config.extra.maxTokens,
+            n: 1,
+            stop: ['\n'],
+            temperature: 0.7,
+            top_p: 1,
+            frequency_penalty: 0,
+            presence_penalty: 0
+          },
+          {
+            headers: {
+              "Authorization": `Bearer ${apiKey}`,
+              "Content-Type": "application/json"
+            }
+          }
+        );
+
+        sending = undefined;
+        message.reply(response.data.choices[0].text);
+      } catch (error) {
+        sending = undefined;
+        message.reply(langData[lang].error.replace("%1", error.message));
+      } finally {
+        delete openAIUsing[event.senderID];
+        if (sending) {
+          message.channel.sendTypingIndicator(event.threadID);
+          sending.then(() => message.channel.sendTypingIndicator(event.threadID, false));
+        }
+      }
+      break;
+    }
+  }
+}
+
+export default {
+  config,
+  langData,
+  onCall
+};

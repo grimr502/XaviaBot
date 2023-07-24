@@ -10,19 +10,13 @@
     "refund": 150
   },
   "daily": {
-    "min": 300,
-    "max": 1000
+    "min": 70000,
+    "max": 90000
   },
   "work": {
-    "min": 200,
-    "max": 1000,
-    "delay": [
-      1800000,
-      3600000,
-      10800000,
-      7200000,
-      21600000
-    ]
+    "min": 70000,
+    "max": 90000,
+    "delay": [1800000, 3600000, 10800000, 7200000, 21600000]
   },
   "sicbo": {
     "minbet": 50
@@ -30,5 +24,24 @@
   "send": {
     "minAmount": 100,
     "fee": 0.05
+  },
+  "dalle": {
+    "apiKey": "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"
+  },
+  "orph": {
+    "apiKey": "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",
+    "organization": "org-i420aJyNw3TD7aELnxji9sMI"
+  },
+  "fishing": {
+    "minbet": 300
+  },
+  "flip": {
+    "minbet": 50
+  },
+  "audio": {
+    "MAX_SONGS": 6
+  },
+  "video": {
+    "MAX_VIDEOS": 6
   }
 }
